@@ -3,37 +3,42 @@ const puppeteer = require('puppeteer')
 const fs = require('fs');
 
 (async () => {
-	const browser = await puppeteer.launch(); // launch a browser
-	const page = await browser.newPage(); // access browser
 
-	// change screenshot size
+	// launch a browser
+	const browser = await puppeteer.launch();
+	// access a browser
+	const page = await browser.newPage();
+
+	// change screenshot's size
 	await page.setViewport({
 		width: 1980,
 		height: 5000,
 		deviceScaleFactor: 1,
 	});
 
-	await page.goto('https://www.qtermin.de/qtermin-stadtheilbronn-abh'); // go to specific page
+	// go to a specific page
+	await page.goto('https://www.qtermin.de/qtermin-stadtheilbronn-abh');
 
-	// select category
+	// select a category (here is residence permit last name Ku-Z)
 	await page.waitForSelector('#iarrow71555');
 	await page.click('#iarrow71555');
 
-	// select service
+	// select a service (here is a residence permit extension)
 	await page.click('#\\31 74045');
 
-	// weiter zur terminauswahl
+	// continue (weiter zur terminauswahl)
 	await page.waitForSelector('#bp1');
 	await page.click('#bp1');
 
 	await page.waitForSelector('#p2');
 	await waitForMS(3000);
 
+	// date and time selection
 	const month = await page.$eval('.ui-datepicker-month', el => +el.value + 1);
 	if (month == 0) {
-		console.log('no available month');
-	} else if (month == 8) {
-		const availableDates = await getAvailableDates(page, 15, 20); // change a dates range here
+		console.error('no available month');
+	} else if (month == 8) { // change a needed month here
+		const availableDates = await getAvailableDates(page, 15, 20); // change a needed dates range here
 		if(availableDates == null)
 			console.error('no available dates');
 
@@ -43,11 +48,12 @@ const fs = require('fs');
 			console.log('Available dates has been written to the file');
 		});
 
-		const date = availableDates[0]; // change available date only here!
+		// pick up a date
+		const date = availableDates[0]; // change an available date only here!
 		await page.click(`a[data-date="${date}"]`);
 		await waitForMS(3000);
 		await page.click('#slot1');
-		const time = await page.$eval('#slot1', el => el.textContent);
+		const time = await page.$eval('#slot1', el => el.textContent); // pick up a first available time slot, can be changed here
 		await waitForMS(3000);
 
 		fs.appendFile('slot.txt', 'Selected date and time: ' + date + '.' + month + '. at ' + time, (err) => {
@@ -56,10 +62,36 @@ const fs = require('fs');
 		});
 	}
 
-	await page.screenshot({path: 'screenshot.png'});
+	// fill in data
+	await fillDataIn(page);
+	await waitForMS(3000);
+
+	await page.screenshot({path: 'screenshot.png'}); // make a scrrenshot with filled in data
 
 	await browser.close();
 })();
+
+async function fillDataIn(page) {
+	await page.$eval('#f542389 select', el => el.value = 'Frau'); // salutation
+
+	await page.click('#f542392 input');
+	await page.type('#f542392', '[last name]'); // last name
+
+	await page.click('#f542393 input');
+	await page.type('#f542393', '[first name]'); // first name
+
+	await page.click('#f542394 input');
+	await page.type('#f542394', '[birthday]'); //birthday
+
+	await page.$eval('#f542397 select', el => el.value = ' Heilbronn'); // city
+
+	await page.click('#f542398 input');
+	await page.type('#f542398', '[phone number]'); // phone
+
+	await page.click('#f542399 input');
+	await page.type('#f542399', '[email]'); // email
+
+}
 
 async function getAvailableDates(page, min, max) { // min == first available date, max == last available date
 	const availableDates = await page.$$eval('.ui-datepicker-calendar td[data-handler="selectDay"] a', elements => {
@@ -80,8 +112,6 @@ async function getAvailableDates(page, min, max) { // min == first available dat
 function waitForMS(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
-
-// alert()
 
 // (async () => {
 // 	const host = 'https://www.qtermin.de';
