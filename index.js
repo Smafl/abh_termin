@@ -1,6 +1,7 @@
 
-const puppeteer = require('puppeteer')
-const fs = require('fs');
+const puppeteer = require('puppeteer') // website interaction
+const fs = require('fs'); // write in a file
+require('dotenv').config(); // .env access
 
 (async () => {
 
@@ -66,31 +67,32 @@ const fs = require('fs');
 	await fillDataIn(page);
 	await waitForMS(3000);
 
-	await page.screenshot({path: 'screenshot.png'}); // make a scrrenshot with filled in data
+	// make a screenshot with filled in data
+	await page.screenshot({path: 'screenshot.png'});
 
 	await browser.close();
 })();
 
 async function fillDataIn(page) {
-	await page.$eval('#f542389 select', el => el.value = 'Frau'); // salutation
+
+	await page.$eval('#f542389 select', el => el.value = 'Frau'); // salutation can be changed here
+
+	await page.$eval('#f542397 select', el => el.value = ' Heilbronn'); // city can be changed here
 
 	await page.click('#f542392 input');
-	await page.type('#f542392', '[last name]'); // last name
+	await page.type('#f542392', process.env.LAST_NAME);
 
 	await page.click('#f542393 input');
-	await page.type('#f542393', '[first name]'); // first name
+	await page.type('#f542393', process.env.FIRST_NAME);
 
 	await page.click('#f542394 input');
-	await page.type('#f542394', '[birthday]'); //birthday
-
-	await page.$eval('#f542397 select', el => el.value = ' Heilbronn'); // city
+	await page.type('#f542394', process.env.BIRTHDAY);
 
 	await page.click('#f542398 input');
-	await page.type('#f542398', '[phone number]'); // phone
+	await page.type('#f542398', process.env.PHONE);
 
 	await page.click('#f542399 input');
-	await page.type('#f542399', '[email]'); // email
-
+	await page.type('#f542399', process.env.EMAIL);
 }
 
 async function getAvailableDates(page, min, max) { // min == first available date, max == last available date
