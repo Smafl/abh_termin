@@ -1,0 +1,3 @@
+Month: 8
+Available dates: 15,19
+Selected date and time: 15.8. at  15:40 - 16:00
