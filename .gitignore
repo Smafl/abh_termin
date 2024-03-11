@@ -1,4 +1,4 @@
 node_modules
-screenshot.png
-slot.txt
+*.png
+*.txt
 .env

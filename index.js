@@ -20,6 +20,13 @@ require('dotenv').config(); // .env access
 	// go to a specific page
 	await page.goto('https://www.qtermin.de/qtermin-stadtheilbronn-abh');
 
+	// write html content in a file
+	// const htmlContent = await page.content();
+	// fs.writeFile('htmlContent.txt', htmlContent, (err) => {
+	// 	if (err) throw err;
+	// 	console.log('html content has been written to the file');
+	// });
+
 	// select a category (here is residence permit last name Ku-Z)
 	await page.waitForSelector('#iarrow71555');
 	await page.click('#iarrow71555');
@@ -35,16 +42,20 @@ require('dotenv').config(); // .env access
 	await waitForMS(3000);
 
 	// date and time selection
-	const month = await page.$eval('.ui-datepicker-month', el => +el.value + 1);
-	if (month == 0) {
-		console.error('no available month');
-	} else if (month == 8) { // change a needed month here
-		const availableDates = await getAvailableDates(page, 15, 20); // change a needed dates range here
-		if(availableDates == null)
-			console.error('no available dates');
+	let availableMonth = 0;
+	const neededMonth = 9; // change a needed month here
+	const timePointer = "next"; // can be change to "next" or "prev"
+	while (availableMonth != neededMonth) {
+		availableMonth = await getMonth(page, neededMonth, timePointer);
+	}
+	if (availableMonth == neededMonth) {
+		const availableDates = await getAvailableDates(page, 1, 30); // change a needed dates range here
+		if (availableDates == null) {
+			console.error('No available dates');
+		}
 
 		fs.writeFile('slot.txt',
-			'Month: ' + month + '\n' + 'Available dates: ' + availableDates + '\n', (err) => {
+			'Month: ' + availableMonth + '\n' + 'Available dates: ' + availableDates + '\n', (err) => {
 			if (err) throw err;
 			console.log('Available dates has been written to the file');
 		});
@@ -57,7 +68,7 @@ require('dotenv').config(); // .env access
 		const time = await page.$eval('#slot1', el => el.textContent); // pick up a first available time slot, can be changed here
 		await waitForMS(3000);
 
-		fs.appendFile('slot.txt', 'Selected date and time: ' + date + '.' + month + '. at ' + time, (err) => {
+		fs.appendFile('slot.txt', 'Selected date and time: ' + date + '.' + availableMonth + '. at ' + time, (err) => {
 			if (err) throw err;
 			console.log('Selected date has been written to the file');
 		});
@@ -65,10 +76,22 @@ require('dotenv').config(); // .env access
 
 	// fill in data
 	await fillDataIn(page);
-	await waitForMS(3000);
+
+	// checkbox agreement with data privacy policy
+	await page.click('#divUserQueries label[class="chkBox"]:nth-child(2)');
 
 	// make a screenshot with filled in data
+	await waitForMS(3000);
 	await page.screenshot({path: 'screenshot.png'});
+
+	// book a slot
+	// try {
+	// 	await page.waitForSelector('#cmdBookAppointment', { visible: true });
+	// 	await page.click('#cmdBookAppointment');
+	// 	console.log('Booked succsessfully');
+	// } catch (error) {
+	// 	console.error('Booking failed: ', error);
+	// }
 
 	await browser.close();
 })();
@@ -80,10 +103,10 @@ async function fillDataIn(page) {
 	await page.$eval('#f542397 select', el => el.value = ' Heilbronn'); // city can be changed here
 
 	await page.click('#f542392 input');
-	await page.type('#f542392', process.env.LAST_NAME);
+	await page.type('#f542392', process.env.FIRST_NAME);
 
 	await page.click('#f542393 input');
-	await page.type('#f542393', process.env.FIRST_NAME);
+	await page.type('#f542393', process.env.LAST_NAME);
 
 	await page.click('#f542394 input');
 	await page.type('#f542394', process.env.BIRTHDAY);
@@ -111,31 +134,27 @@ async function getAvailableDates(page, min, max) { // min == first available dat
 	return filteredDates;
 }
 
+async function getMonth(page, neededMonth, timePointer) {
+	let month = await page.$eval('.ui-datepicker-month', el => +el.value + 1);
+	while (month != neededMonth) {
+		await waitForMS(3000);
+
+		// "next" for future month searching after available one
+		// "prev"
+		await page.click(`#divDP a[data-handler="${timePointer}"]`);
+
+		// this selector is accessible
+		// from the current month
+		// until 6 month ahead only!
+		await page.waitForSelector('#divDP');
+
+		month = await page.$eval('.ui-datepicker-month', el => +el.value + 1);
+	}
+	await waitForMS(3000);
+	await page.screenshot({path: 'screenshot_temp.png'});
+	return month;
+}
+
 function waitForMS(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
-
-// (async () => {
-// 	const host = 'https://www.qtermin.de';
-// 	const path = '/api/timeslots?date=2024-09-01&serviceid=174045&capacity=1&caching=false&duration=20&cluster=false&slottype=0&fillcalendarstrategy=0&showavcap=false&appfuture=180&appdeadline=1920&msdcm=0&oneoff=null&appdeadlinewm=2&tz=W.%20Europe%20Standard%20Time&tzaccount=W.%20Europe%20Standard%20Time&calendarid=';
-
-// 	const headers = {
-// 		// ':authority:': 'www.qtermin.de',
-// 		// ':method:': 'GET',
-// 		// ':path:': path,
-// 		// ':scheme:': 'https',
-// 		'Cookie': 'eTerminSessionId=plugcosk1i3lnw2s3aspjrf3'
-// 	};
-
-// 	const response = await fetch(host + path, {
-// 		method: 'GET',
-// 		headers
-// 	});
-
-// 	if(!response.ok)
-// 		return console.error('Request failed', response.status);
-
-// 	const data = await response.json();
-
-// 	console.log(data)
-// })();
