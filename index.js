@@ -44,7 +44,12 @@ require('dotenv').config(); // .env access
 	// date and time selection
 	let availableMonth = 0;
 	const neededMonth = 9; // change a needed month here
+
+	// this selector is accessible
+	// from the current month
+	// until 6 month ahead only!
 	const timePointer = "next"; // can be change to "next" or "prev"
+
 	while (availableMonth != neededMonth) {
 		availableMonth = await getMonth(page, neededMonth, timePointer);
 	}
@@ -61,7 +66,7 @@ require('dotenv').config(); // .env access
 		});
 
 		// pick up a date
-		const date = availableDates[0]; // change an available date only here!
+		const date = availableDates[0]; // change a date only here if there are more than 1 is available!
 		await page.click(`a[data-date="${date}"]`);
 		await waitForMS(3000);
 		await page.click('#slot1');
@@ -82,7 +87,7 @@ require('dotenv').config(); // .env access
 
 	// make a screenshot with filled in data
 	await waitForMS(3000);
-	await page.screenshot({path: 'screenshot.png'});
+	await page.screenshot({path: 'screenshot_data.png'});
 
 	// book a slot
 	// try {
@@ -122,15 +127,12 @@ async function getAvailableDates(page, min, max) { // min == first available dat
 	const availableDates = await page.$$eval('.ui-datepicker-calendar td[data-handler="selectDay"] a', elements => {
 		return Array.from(elements).map(x => +x.getAttribute('data-date'));
 	});
-
 	if (availableDates.length === 0)
 		return null;
 
 	const filteredDates = availableDates.filter(date => date >= min && date <= max);
-
 	if (filteredDates.length === 0)
 		return null;
-
 	return filteredDates;
 }
 
@@ -138,20 +140,10 @@ async function getMonth(page, neededMonth, timePointer) {
 	let month = await page.$eval('.ui-datepicker-month', el => +el.value + 1);
 	while (month != neededMonth) {
 		await waitForMS(3000);
-
-		// "next" for future month searching after available one
-		// "prev"
 		await page.click(`#divDP a[data-handler="${timePointer}"]`);
-
-		// this selector is accessible
-		// from the current month
-		// until 6 month ahead only!
 		await page.waitForSelector('#divDP');
-
 		month = await page.$eval('.ui-datepicker-month', el => +el.value + 1);
 	}
-	await waitForMS(3000);
-	await page.screenshot({path: 'screenshot_temp.png'});
 	return month;
 }
 
