@@ -7,58 +7,58 @@ require('dotenv').config(); // .env access
 
 	// launch a browser
 	const browser = await puppeteer.launch();
-	// access a browser
-	const page = await browser.newPage();
 
-	// change screenshot's size
-	await page.setViewport({
-		width: 1980,
-		height: 5000,
-		deviceScaleFactor: 1,
-	});
+	try {
 
-	// go to a specific page
-	await page.goto('https://www.qtermin.de/qtermin-stadtheilbronn-abh');
+		// access a browser
+		const page = await browser.newPage();
 
-	// write html content in a file
-	// const htmlContent = await page.content();
-	// fs.writeFile('htmlContent.txt', htmlContent, (err) => {
-	// 	if (err) throw err;
-	// 	console.log('html content has been written to the file');
-	// });
+		// change screenshot's size
+		await page.setViewport({
+			width: 1980,
+			height: 5000,
+			deviceScaleFactor: 1,
+		});
 
-	// select a category (here is residence permit last name Ku-Z)
-	await page.waitForSelector('#iarrow71555');
-	await page.click('#iarrow71555');
+		// go to a specific page
+		await page.goto('https://www.qtermin.de/qtermin-stadtheilbronn-abh');
 
-	// select a service (here is a residence permit extension)
-	await page.click('#\\31 74045');
+		// write html content in a file
+		// const htmlContent = await page.content();
+		// fs.writeFile('htmlContent.txt', htmlContent, (err) => {
+		// 	if (err) throw err;
+		// 	console.log('html content has been written to the file');
+		// });
 
-	// continue (weiter zur terminauswahl)
-	await page.waitForSelector('#bp1');
-	await page.click('#bp1');
+		// select a category (here is residence permit last name Ku-Z)
+		await page.waitForSelector('#iarrow71555');
+		await page.click('#iarrow71555');
 
-	await page.waitForSelector('#p2');
-	await waitForMS(3000);
+		// select a service (here is a residence permit extension)
+		await page.click('#\\31 74045');
 
-	// date and time selection
-	let availableMonth = 0;
-	const neededMonth = 9; // change a needed month here
+		// continue (weiter zur terminauswahl)
+		await page.waitForSelector('#bp1');
+		await page.click('#bp1');
 
-	// this selector is accessible
-	// from the current month
-	// until 6 month ahead only!
-	const timePointer = "next"; // can be change to "next" or "prev"
+		await page.waitForSelector('#p2');
+		await waitForMS(3000);
 
-	while (availableMonth != neededMonth) {
-		availableMonth = await getMonth(page, neededMonth, timePointer);
-	}
-	if (availableMonth == neededMonth) {
+		// date and time selection
+		let availableMonth = 0;
+		const neededMonth = 9; // change a needed month here
+
+		// this selector is accessible
+		// from the current month
+		// until 6 month ahead only!
+		const timePointer = "next"; // can be change to "next" or "prev"
+
+		while (availableMonth != neededMonth)
+			availableMonth = await getMonth(page, neededMonth, timePointer);
+
 		const availableDates = await getAvailableDates(page, 1, 30); // change a needed dates range here
-		if (availableDates == null) {
-			console.error('No available dates');
-		}
-
+		if (availableDates == null)
+			throw new Error();
 		fs.writeFile('slot.txt',
 			'Month: ' + availableMonth + '\n' + 'Available dates: ' + availableDates + '\n', (err) => {
 			if (err) throw err;
@@ -72,33 +72,34 @@ require('dotenv').config(); // .env access
 		await page.click('#slot1');
 		const time = await page.$eval('#slot1', el => el.textContent); // pick up a first available time slot, can be changed here
 		await waitForMS(3000);
-
 		fs.appendFile('slot.txt', 'Selected date and time: ' + date + '.' + availableMonth + '. at ' + time, (err) => {
 			if (err) throw err;
 			console.log('Selected date has been written to the file');
 		});
+
+		// fill in data
+		await fillDataIn(page);
+
+		// checkbox agreement with data privacy policy
+		await page.click('#divUserQueries label[class="chkBox"]:nth-child(2)');
+
+		// make a screenshot with filled in data
+		await waitForMS(3000);
+		await page.screenshot({path: 'screenshot_data.png'});
+
+		// book a slot
+		// try {
+		// 	await page.waitForSelector('.wizard');
+		// 	await page.click('#cmdBookAppointment');
+		// 	console.log('Booked succsessfully');
+		// } catch (error) {
+		// 	console.error('Booking failed: ', error);
+		// }
+	} catch(error) {
+		console.error(error);
+	} finally {
+		await browser.close();
 	}
-
-	// fill in data
-	await fillDataIn(page);
-
-	// checkbox agreement with data privacy policy
-	await page.click('#divUserQueries label[class="chkBox"]:nth-child(2)');
-
-	// make a screenshot with filled in data
-	await waitForMS(3000);
-	await page.screenshot({path: 'screenshot_data.png'});
-
-	// book a slot
-	// try {
-	// 	await page.waitForSelector('#cmdBookAppointment', { visible: true });
-	// 	await page.click('#cmdBookAppointment');
-	// 	console.log('Booked succsessfully');
-	// } catch (error) {
-	// 	console.error('Booking failed: ', error);
-	// }
-
-	await browser.close();
 })();
 
 async function fillDataIn(page) {
@@ -144,6 +145,8 @@ async function getMonth(page, neededMonth, timePointer) {
 		await page.waitForSelector('#divDP');
 		month = await page.$eval('.ui-datepicker-month', el => +el.value + 1);
 	}
+	await waitForMS(3000);
+	// await page.screenshot({path: 'screenshot_month.png'});
 	return month;
 }
 
