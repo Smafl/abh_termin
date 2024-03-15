@@ -88,13 +88,20 @@ require('dotenv').config(); // .env access
 		await page.screenshot({path: 'screenshot_data.png'});
 
 		// book a slot
-		// try {
-		// 	await page.waitForSelector('.wizard');
-		// 	await page.click('#cmdBookAppointment');
-		// 	console.log('Booked succsessfully');
-		// } catch (error) {
-		// 	console.error('Booking failed: ', error);
-		// }
+		try {
+			await page.waitForSelector('#divWizard');
+			await page.click('#cmdBookAppointment');
+			console.log('Booked succsessfully');
+			fs.appendFile('slot.txt', '\nBooked succsessfully', (err) => {
+				if (err) throw err;
+			});
+		} catch (error) {
+			console.error('Booking failed: ', error);
+			fs.appendFile('slot.txt', '\nBooking failed', (err) => {
+				if (err) throw err;
+			});
+		}
+
 	} catch(error) {
 		console.error(error);
 	} finally {
@@ -146,7 +153,6 @@ async function getMonth(page, neededMonth, timePointer) {
 		month = await page.$eval('.ui-datepicker-month', el => +el.value + 1);
 	}
 	await waitForMS(3000);
-	// await page.screenshot({path: 'screenshot_month.png'});
 	return month;
 }
 
